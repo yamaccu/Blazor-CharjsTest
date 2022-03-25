@@ -1,0 +1,104 @@
+﻿@page "/fetchdata"
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+@using System.Text.Json
+@using System.Collections.Generic
+@using System.IO
+@using System.Text
+@using System.Linq
+
+<h1>Weather forecast</h1>
+
+<p>This component demonstrates fetching data from the server.</p>
+
+@if (forecasts == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Temp. (C)</th>
+                <th>Temp. (F)</th>
+                <th>Summary</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var forecast in forecasts)
+            {
+                <tr>
+                    <td>@forecast.Date.ToShortDateString()</td>
+                    <td>@forecast.TemperatureC</td>
+                    <td>@forecast.TemperatureF</td>
+                    <td>@forecast.Summary</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<p>Chart.jsテスト</p>
+
+<div>
+    <canvas id="myChart"></canvas>
+</div>
+
+
+
+
+
+
+@code {
+    private WeatherForecast[] forecasts;
+    private ChartJson chartJson;
+
+    protected override async Task OnInitializedAsync()
+    {
+        forecasts = await Http.GetFromJsonAsync<WeatherForecast[]>("sample-data/weather.json");
+
+        var DataSets1 = new Dataset()
+        {
+            label = "temp.(C)",
+            data = forecasts.Select(f => f.TemperatureC),
+            backgroundColor = "rgba(255, 99, 132, 0.2)",
+            borderColor = "rgba(255, 99, 132, 1)",
+            borderWidth = 1,
+        };
+
+        var DataSets2 = new Dataset()
+        {
+            label = "temp.(F)",
+            data = forecasts.Select(f => f.TemperatureF),
+            backgroundColor = "rgba(54, 162, 235, 0.2)",
+            borderColor = "rgba(54, 162, 235, 1)",
+            borderWidth = 1,
+        };
+
+        chartJson = new ChartJson()
+        {
+            type = "line",
+            data = new Data()
+            {
+                labels = forecasts.Select(f => f.Date.ToShortDateString()),
+                datasets = new Dataset[2] { DataSets1, DataSets2 },
+            },
+        };
+
+        var jsonStr = JsonSerializer.Serialize(chartJson);
+        await JSRuntime.InvokeAsync<string>("renderChart", jsonStr);
+    }
+
+    public class WeatherForecast
+    {
+        public DateTime Date { get; set; }
+
+        public int TemperatureC { get; set; }
+
+        public string Summary { get; set; }
+
+        public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    }
+}
